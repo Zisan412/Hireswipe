@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
     $pass  = $_POST['password'] ?? '';
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Enter a valid email address.';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Enter a valid email.';
     if ($pass === '')                               $errors['password'] = 'Enter your password.';
 
     if (!$errors) {

@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $salary = trim($_POST['expected_salary'] ?? '');
     $cur    = $_POST['salary_currency'] ?? 'INR';
     $type   = $_POST['employment_type'] ?? '';
+    $age    = null;
     $inds   = array_values(array_intersect((array)($_POST['industries'] ?? []), array_keys(INDUSTRIES)));
 
     if (!preg_match('/^[\p{L} .\'-]{2,100}$/u', $name)) $errors['name'] = 'Enter your full name.';
@@ -26,28 +27,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$d || $d->format('Y-m-d') !== $dob)              $errors['dob'] = 'Enter a valid date of birth.';
     else {
         $age = $d->diff(new DateTime('today'))->y;
-        if ($d > new DateTime('today') || $age < 16)      $errors['dob'] = 'You must be at least 16 years old.';
-        elseif ($age > 80)                                $errors['dob'] = 'Please check your date of birth.';
+        if ($d > new DateTime('today') || $age < 16)      { $errors['dob'] = 'You must be at least 16 years old.'; $age = null; }
+        elseif ($age > 80)                                { $errors['dob'] = 'Please check your date of birth.'; $age = null; }
     }
     if (mb_strlen($loc) < 2 || mb_strlen($loc) > 150)     $errors['location'] = 'Enter your city and country (e.g. Ahmedabad, India).';
     if (!preg_match('/^[\p{L} .\'-]{2,80}$/u', $nat))     $errors['nationality'] = 'Enter your nationality.';
     if (mb_strlen($qual) < 2 || mb_strlen($qual) > 150)   $errors['qualification'] = 'Enter your highest qualification.';
-    if (!is_numeric($exp) || $exp < 0 || $exp > 60)       $errors['experience_years'] = 'Enter experience between 0 and 60 years.';
+    if (!ctype_digit((string)$exp) || (int)$exp > 60)     $errors['experience_years'] = 'Enter valid experience (whole years).';
+    elseif ($age !== null && (int)$exp >= $age)           $errors['experience_years'] = 'Experience should be less than age.';
     if (!valid_money($salary))                            $errors['expected_salary'] = 'Enter a valid expected salary.';
     if (!isset(CURRENCIES[$cur]))                         $errors['expected_salary'] = 'Choose a currency.';
-    if (!isset(EMPLOYMENT_TYPES[$type]))                  $errors['employment_type'] = 'Choose an employment type.';
-    if (count($inds) < 1 || count($inds) > 5)             $errors['industries'] = 'Select 1 to 5 industries.';
+    if (!isset(SEEKER_EMPLOYMENT_TYPES[$type]))                  $errors['employment_type'] = 'Choose an employment type.';
+    if (count($inds) < 1)                                 $errors['industries'] = 'Select at least one industry.';
 
-    [$picErr, $picMime] = check_upload('picture', IMAGE_TYPES, 2 * 1048576, false);
-    [$cvErr,  $cvMime ] = check_upload('cv', DOC_TYPES, 5 * 1048576, true);
+    [$picErr, $picMime] = check_upload('picture', IMAGE_TYPES, 2 * 1048576, true, 'Upload your picture.');
+    [$cvErr,  $cvMime ] = check_upload('cv', CV_TYPES, 5 * 1048576, true, 'Upload your CV.');
     if ($picErr) $errors['picture'] = $picErr;
     if ($cvErr)  $errors['cv'] = $cvErr;
 
     if (!$errors) {
         $saved = [];
         try {
-            $pic = $picMime ? $saved[] = store_upload('picture', $picMime, IMAGE_TYPES, 'pictures') : null;
-            $cv  = $saved[] = store_upload('cv', $cvMime, DOC_TYPES, 'cv');
+            $pic = $saved[] = store_upload('picture', $picMime, IMAGE_TYPES, 'pictures');
+            $cv  = $saved[] = store_upload('cv', $cvMime, CV_TYPES, 'cv');
             $cvName = mb_substr(basename($_FILES['cv']['name']), 0, 255);
 
             profile_save('employee', (int)$user['id'], [
@@ -94,7 +96,7 @@ page_start('Your profile', 3, true);
       <?= err($errors, 'qualification') ?>
     </label>
     <label>Experience (years)
-      <input type="number" name="experience_years" value="<?= old('experience_years') ?>" min="0" max="60" step="0.5" required>
+      <input type="number" name="experience_years" value="<?= old('experience_years') ?>" min="0" max="60" step="1" required>
       <?= err($errors, 'experience_years') ?>
     </label>
     <label>Expected salary (per year)
@@ -109,13 +111,13 @@ page_start('Your profile', 3, true);
     <label>Employment type
       <select name="employment_type" required>
         <option value="">Select…</option>
-        <?php foreach (EMPLOYMENT_TYPES as $k => $l): ?><option value="<?= $k ?>" <?= selected('employment_type', $k) ?>><?= e($l) ?></option><?php endforeach; ?>
+        <?php foreach (SEEKER_EMPLOYMENT_TYPES as $k => $l): ?><option value="<?= $k ?>" <?= selected('employment_type', $k) ?>><?= e($l) ?></option><?php endforeach; ?>
       </select>
       <?= err($errors, 'employment_type') ?>
     </label>
 
     <fieldset class="full">
-      <legend>Preferred industries <small>(choose up to 5)</small></legend>
+      <legend>Preferred industries <small>(choose one or more)</small></legend>
       <div class="chips">
         <?php foreach (INDUSTRIES as $k => $l): ?>
           <label class="chip"><input type="checkbox" name="industries[]" value="<?= $k ?>" <?= in_array($k, $postedInds, true) ? 'checked' : '' ?>><span><?= e($l) ?></span></label>
@@ -124,12 +126,12 @@ page_start('Your profile', 3, true);
       <?= err($errors, 'industries') ?>
     </fieldset>
 
-    <label>Profile picture <small>(optional · JPG, PNG, WebP · max 2 MB)</small>
-      <input type="file" name="picture" accept="image/jpeg,image/png,image/webp">
+    <label>Profile picture <small>(JPG or PNG · max 2 MB)</small>
+      <input type="file" name="picture" accept="image/jpeg,image/png" required>
       <?= err($errors, 'picture') ?>
     </label>
-    <label>CV / Resume <small>(PDF, DOC, DOCX · max 5 MB)</small>
-      <input type="file" name="cv" accept=".pdf,.doc,.docx" required>
+    <label>CV / Resume <small>(PDF only · max 5 MB)</small>
+      <input type="file" name="cv" accept=".pdf,application/pdf" required>
       <?= err($errors, 'cv') ?>
     </label>
 

@@ -9,31 +9,32 @@ const UPLOAD_DIR       = __DIR__ . '/uploads';
 const MAX_LOGIN_TRIES  = 5;    // wrong passwords before lock
 const LOCK_MINUTES     = 15;   // lock duration
 
-const EMPLOYMENT_TYPES = [
-    'full_time' => 'Full-time', 'part_time' => 'Part-time', 'contract' => 'Contract',
-    'internship' => 'Internship', 'freelance' => 'Freelance',
-];
+// Employment types differ per role (requirements 9.2)
+const EMPLOYER_EMPLOYMENT_TYPES = ['full_time' => 'Full time', 'part_time' => 'Part time', 'internship' => 'Internship'];
+const SEEKER_EMPLOYMENT_TYPES   = ['full_time' => 'Full time', 'half_time' => 'Half time', 'casual' => 'Casual'];
+
+// Industry reference list (requirements 9.1)
 const INDUSTRIES = [
-    'it' => 'IT & Software', 'finance' => 'Finance & Banking', 'healthcare' => 'Healthcare',
-    'education' => 'Education', 'manufacturing' => 'Manufacturing', 'retail' => 'Retail & E-commerce',
-    'hospitality' => 'Hospitality & Tourism', 'construction' => 'Construction', 'marketing' => 'Marketing & Media',
-    'logistics' => 'Logistics & Transport', 'other' => 'Other',
+    'consulting' => 'Consulting & Strategy', 'design' => 'Design & Architecture', 'education' => 'Education & Training',
+    'engineering' => 'Engineering', 'farming' => 'Farming, Animal & Conservation', 'government' => 'Government & Defence',
+    'healthcare' => 'Healthcare & Medical', 'hospitality' => 'Hospitality & Tourism', 'hr' => 'Human Resources & Recruitment',
+    'ict' => 'Information & Communication Technology', 'insurance' => 'Insurance & Superannuation', 'legal' => 'Legal',
+    'manufacturing' => 'Manufacturing, Transport & Logistics', 'marketing' => 'Marketing & Communications',
+    'mining' => 'Mining, Resources & Energy', 'real_estate' => 'Real Estate & Property',
+    'retail' => 'Retail & Consumer Products', 'sales' => 'Sales',
 ];
 const CURRENCIES = ['INR' => 'INR ₹', 'USD' => 'USD $', 'EUR' => 'EUR €', 'GBP' => 'GBP £', 'AED' => 'AED'];
 const COUNTRY_CODES = [
     '+91' => 'India (+91)', '+1' => 'US/Canada (+1)', '+44' => 'UK (+44)',
     '+971' => 'UAE (+971)', '+65' => 'Singapore (+65)', '+61' => 'Australia (+61)',
 ];
-const IMAGE_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-const DOC_TYPES   = [
-    'application/pdf' => 'pdf',
-    'application/msword' => 'doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
-];
+const IMAGE_TYPES = ['image/jpeg' => 'jpg', 'image/png' => 'png'];   // JPG or PNG only (C7)
+const CV_TYPES    = ['application/pdf' => 'pdf'];   // CV must be a PDF (C8)
 
 /* ---------- Session ---------- */
+ini_set('session.gc_maxlifetime', (string)(60 * 60 * 24 * 30));   // stay signed in until sign out (A3)
 session_set_cookie_params([
-    'lifetime' => 0, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
+    'lifetime' => 60 * 60 * 24 * 30, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
     'secure' => !empty($_SERVER['HTTPS']),
 ]);
 session_start();
@@ -172,19 +173,15 @@ function valid_money(string $v): bool
 
 /* ---------- File uploads ---------- */
 /** @return array{0:?string,1:?string} [error, detected mime] */
-function check_upload(string $field, array $allowed, int $maxBytes, bool $required): array
+function check_upload(string $field, array $allowed, int $maxBytes, bool $required, string $requiredMsg = 'This file is required.'): array
 {
     $f = $_FILES[$field] ?? null;
-    if (!$f || $f['error'] === UPLOAD_ERR_NO_FILE) return [$required ? 'This file is required.' : null, null];
+    if (!$f || $f['error'] === UPLOAD_ERR_NO_FILE) return [$required ? $requiredMsg : null, null];
     if ($f['error'] === UPLOAD_ERR_INI_SIZE || $f['error'] === UPLOAD_ERR_FORM_SIZE) return ['File is too large.', null];
     if ($f['error'] !== UPLOAD_ERR_OK) return ['Upload failed. Please try again.', null];
     if ($f['size'] > $maxBytes) return ['File is too large (max ' . round($maxBytes / 1048576) . ' MB).', null];
 
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']);
-    // Some servers report .docx as a zip
-    if ($mime === 'application/zip' && strtolower(pathinfo($f['name'], PATHINFO_EXTENSION)) === 'docx') {
-        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    }
     if (!isset($allowed[$mime])) return ['Unsupported file type. Allowed: ' . implode(', ', array_unique($allowed)) . '.', null];
     if (str_starts_with($mime, 'image/') && @getimagesize($f['tmp_name']) === false) return ['That image looks corrupted.', null];
     return [null, $mime];

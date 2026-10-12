@@ -11,7 +11,7 @@ const msgFor = el => {
   const v = el.validity;
   if (v.customError) return el.validationMessage;
   if (v.valueMissing) return el.type === 'checkbox' ? 'Please accept to continue.' : 'This field is required.';
-  if (v.typeMismatch) return el.type === 'email' ? 'Enter a valid email address.' : 'Enter a valid value.';
+  if (v.typeMismatch) return el.type === 'email' ? 'Enter a valid email.' : 'Enter a valid value.';
   if (v.tooShort) return `Use at least ${el.minLength} characters.`;
   if (v.rangeUnderflow || v.rangeOverflow) return 'This value is out of range.';
   return 'Please check this field.';
@@ -87,12 +87,6 @@ document.querySelectorAll('input[type=file]').forEach(inp => {
   ['dragenter', 'dragover'].forEach(ev => box.addEventListener(ev, () => box.classList.add('over')));
   ['dragleave', 'drop'].forEach(ev => box.addEventListener(ev, () => box.classList.remove('over')));
 });
-
-// Industry chips: max 5, with a live hint
-const chips = [...document.querySelectorAll('input[name="industries[]"]')];
-chips.forEach(c => c.addEventListener('change', () => {
-  if (chips.filter(x => x.checked).length > 5) c.checked = false;
-}));
 
 // Character counter for long text
 document.querySelectorAll('textarea[maxlength]').forEach(t => {

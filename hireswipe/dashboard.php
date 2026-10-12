@@ -27,7 +27,7 @@ page_start('Dashboard');
     <dl class="summary">
       <dt>Company</dt><dd><?= e($p['company']) ?></dd>
       <dt>Location</dt><dd><?= e($p['location']) ?></dd>
-      <dt>Hiring for</dt><dd><?= e($p['position']) ?> (<?= e(EMPLOYMENT_TYPES[$p['employment_type']] ?? '') ?>)</dd>
+      <dt>Hiring for</dt><dd><?= e($p['position']) ?> (<?= e(EMPLOYER_EMPLOYMENT_TYPES[$p['employment_type']] ?? '') ?>)</dd>
       <dt>Salary</dt><dd><?= e($p['salary_currency']) ?> <?= number_format((float)$p['salary']) ?></dd>
     </dl>
   <?php endif; ?>

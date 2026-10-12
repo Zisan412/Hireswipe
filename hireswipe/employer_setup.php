@@ -22,19 +22,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (mb_strlen($loc) < 2 || mb_strlen($loc) > 150)         $errors['location'] = 'Enter the company location (City, Country).';
     if (!isset(INDUSTRIES[$ind]))                             $errors['industry'] = 'Choose an industry.';
     if (mb_strlen($pos) < 2 || mb_strlen($pos) > 150)         $errors['position'] = 'Enter the position you are hiring for.';
-    if (!isset(EMPLOYMENT_TYPES[$type]))                      $errors['employment_type'] = 'Choose an employment type.';
+    if (!isset(EMPLOYER_EMPLOYMENT_TYPES[$type]))                      $errors['employment_type'] = 'Choose an employment type.';
     if (!valid_money($salary))                                $errors['salary'] = 'Enter a valid salary.';
     if (!isset(CURRENCIES[$cur]))                             $errors['salary'] = 'Choose a currency.';
     if (mb_strlen($detail) < 30)                              $errors['job_detail'] = 'Please describe the job in at least 30 characters.';
     elseif (mb_strlen($detail) > 3000)                        $errors['job_detail'] = 'Job details are too long (max 3000 characters).';
 
-    [$logoErr, $logoMime] = check_upload('logo', IMAGE_TYPES, 2 * 1048576, false);
+    [$logoErr, $logoMime] = check_upload('logo', IMAGE_TYPES, 2 * 1048576, true, 'Upload your logo.');
     if ($logoErr) $errors['logo'] = $logoErr;
 
     if (!$errors) {
         $saved = [];
         try {
-            $logo = $logoMime ? $saved[] = store_upload('logo', $logoMime, IMAGE_TYPES, 'logos') : null;
+            $logo = $saved[] = store_upload('logo', $logoMime, IMAGE_TYPES, 'logos');
 
             profile_save('employer', (int)$user['id'], [
                 'company' => $company, 'location' => $loc, 'industry' => $ind, 'position' => $pos,
@@ -79,7 +79,7 @@ page_start('Company setup', 3, true);
     <label>Employment type
       <select name="employment_type" required>
         <option value="">Select…</option>
-        <?php foreach (EMPLOYMENT_TYPES as $k => $l): ?><option value="<?= $k ?>" <?= selected('employment_type', $k) ?>><?= e($l) ?></option><?php endforeach; ?>
+        <?php foreach (EMPLOYER_EMPLOYMENT_TYPES as $k => $l): ?><option value="<?= $k ?>" <?= selected('employment_type', $k) ?>><?= e($l) ?></option><?php endforeach; ?>
       </select>
       <?= err($errors, 'employment_type') ?>
     </label>
@@ -96,8 +96,8 @@ page_start('Company setup', 3, true);
       <textarea name="job_detail" rows="6" minlength="30" maxlength="3000" placeholder="Responsibilities, requirements, perks…" required><?= old('job_detail') ?></textarea>
       <?= err($errors, 'job_detail') ?>
     </label>
-    <label class="full">Company logo <small>(optional · JPG, PNG, WebP · max 2 MB)</small>
-      <input type="file" name="logo" accept="image/jpeg,image/png,image/webp">
+    <label class="full">Company logo <small>(JPG or PNG · max 2 MB)</small>
+      <input type="file" name="logo" accept="image/jpeg,image/png" required>
       <?= err($errors, 'logo') ?>
     </label>
     <button class="btn full" type="submit">Finish setup</button>

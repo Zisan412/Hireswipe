@@ -1,0 +1,4 @@
+hireswipe/data/store.json
+hireswipe/uploads/*
+!hireswipe/uploads/.htaccess
+hireswipe-flow-fixes.patch

@@ -15,9 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $confirm = $_POST['confirm_password'] ?? '';
 
     if (!preg_match('/^[\p{L} .\'-]{2,100}$/u', $name))          $errors['name'] = 'Enter your full name (letters only, 2–100 characters).';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) $errors['email'] = 'Enter a valid email address.';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 255) $errors['email'] = 'Enter a valid email.';
     if (!isset(COUNTRY_CODES[$cc]))                              $errors['mobile'] = 'Choose a country code.';
-    elseif (!valid_mobile($cc, $mobile))                         $errors['mobile'] = $cc === '+91' ? 'Enter a valid 10-digit mobile number.' : 'Enter a valid mobile number.';
+    elseif (!valid_mobile($cc, $mobile))                         $errors['mobile'] = 'Enter a valid phone number.';
     if ($p = password_problem($pass))                            $errors['password'] = $p;
     if ($confirm !== $pass)                                      $errors['confirm_password'] = 'Passwords do not match.';
     if (empty($_POST['terms']))                                  $errors['terms'] = 'Please accept the terms to continue.';
