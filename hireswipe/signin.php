@@ -1,14 +1,21 @@
 <?php
 require __DIR__ . '/config.php';
 require __DIR__ . '/layout.php';
+require __DIR__ . '/demo_data.php';   // demo accounts (prototype only)
 
 if ($u = current_user()) redirect(next_screen($u));
+
+try { demo_seed(); } catch (Throwable $ex) { /* store not writable: ignore here, real pages will show the message */ }
 
 $errors = [];
 $notice = $_SESSION['flash'] ?? null; unset($_SESSION['flash']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+
+    // One-click demo buttons: sign in straight to the Home screen
+    if (in_array($_POST['demo'] ?? '', ['employee', 'employer'], true)) demo_login_as($_POST['demo']);
+
     $email = strtolower(trim($_POST['email'] ?? ''));
     $pass  = $_POST['password'] ?? '';
 
@@ -69,6 +76,20 @@ page_start('Sign in');
       <?= err($errors, 'password') ?>
     </label>
     <button class="btn" type="submit">Sign in</button>
+  </form>
+
+  <style>
+
+.demo2{margin-top:22px;padding:14px;border-radius:12px;background:var(--amber-t);display:grid;gap:8px}
+.demo2 p{margin:0 0 2px;font-size:13.5px;color:#6B4A00}.demo2 code{background:#fff;padding:1px 6px;border-radius:6px}
+.demo2 button{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border:0;border-radius:10px;background:#fff;color:var(--ink);font:inherit;cursor:pointer;box-shadow:0 0 0 1.5px rgba(154,91,0,.3);text-align:left}
+.demo2 button:hover{background:#FFF9EC}.demo2 button span{color:var(--mute);font-size:13px}
+</style>
+  <form method="post" class="demo2">
+    <?= csrf_field() ?>
+    <p><b>Quick demo</b> · every profile field is pre-filled · password <code>Demo@1234</code></p>
+    <button type="submit" name="demo" value="employee"><b>Job seeker</b><span>employee@hireswipe.com</span></button>
+    <button type="submit" name="demo" value="employer"><b>Employer</b><span>employer@hireswipe.com</span></button>
   </form>
 
   <p class="foot">New to HireSwipe? <a href="signup.php">Create an account</a></p>
